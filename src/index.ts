@@ -13,9 +13,11 @@ program
   .description('Generate Zod schemas and Types from Bruno files')
   .requiredOption('-i, --in <path>', 'Input path to Bruno folder')
   .requiredOption('-o, --out <path>', 'Output path for generated files')
+  .option('-k, --keep', 'Keep existing files in output directory', false)
   .action(async (options) => {
     const inDir = path.resolve(options.in);
     const outDir = path.resolve(options.out);
+    const keep = options.keep;
 
     if (!fs.existsSync(inDir)) {
         console.error(`Input directory does not exist: ${inDir}`);
@@ -51,7 +53,7 @@ program
         }
 
         // Silent: console.log(`Parsed ${parsedFiles.length} files. Generating schemas...`);
-        const stats = await generateSchemas(parsedFiles, outDir);
+        const stats = await generateSchemas(parsedFiles, outDir, keep);
         
         console.log(`Documented ${stats.documentedEndpoints} endpoints and created ${stats.createdSchemas} schemas.`);
 

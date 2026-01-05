@@ -227,8 +227,12 @@ export interface GenStats {
     createdSchemas: number;
 }
 
-export async function generateSchemas(bruFiles: BruFile[], outPath: string): Promise<GenStats> {
-    await fs.ensureDir(outPath);
+export async function generateSchemas(bruFiles: BruFile[], outPath: string, keep: boolean = false): Promise<GenStats> {
+    if (!keep) {
+        await fs.emptyDir(outPath);
+    } else {
+        await fs.ensureDir(outPath);
+    }
     
     let documentedEndpoints = 0;
     let createdSchemas = 0;

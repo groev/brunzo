@@ -26,7 +26,7 @@ describe('Generator', () => {
     const stats = await generateSchemas([mockFile], 'dist');
 
     expect(stats.documentedEndpoints).toBe(1);
-    expect(fs.ensureDir).toHaveBeenCalledWith('dist');
+    expect(fs.emptyDir).toHaveBeenCalledWith('dist');
     expect(fs.writeFile).toHaveBeenCalledTimes(1);
 
     const [filePath, content] = vi.mocked(fs.writeFile).mock.calls[0];
@@ -117,5 +117,33 @@ describe('Generator', () => {
     const stats = await generateSchemas([mockFile], 'dist');
     expect(stats.documentedEndpoints).toBe(0);
     expect(fs.writeFile).not.toHaveBeenCalled();
+  });
+
+  it('should clean the output directory by default', async () => {
+    const mockFile: BruFile = {
+      path: 'test.bru',
+      name: 'Test',
+      method: 'get',
+      url: '/test',
+      body: { id: 1 }
+    };
+
+    await generateSchemas([mockFile], 'dist');
+    expect(fs.emptyDir).toHaveBeenCalledWith('dist');
+    expect(fs.ensureDir).not.toHaveBeenCalled();
+  });
+
+  it('should not clean the output directory when keep flag is true', async () => {
+    const mockFile: BruFile = {
+      path: 'test.bru',
+      name: 'Test',
+      method: 'get',
+      url: '/test',
+      body: { id: 1 }
+    };
+
+    await generateSchemas([mockFile], 'dist', true);
+    expect(fs.emptyDir).not.toHaveBeenCalled();
+    expect(fs.ensureDir).toHaveBeenCalledWith('dist');
   });
 });

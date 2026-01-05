@@ -46,6 +46,7 @@ brunzo -i <path-to-bruno-collection> -o <path-to-output-dir>
 | :--- | :--- | :--- | :--- |
 | `--in` | `-i` | Input directory containing `.bru` files | Yes |
 | `--out` | `-o` | Output directory where `.ts` files will be saved | Yes |
+| `--keep` | `-k` | Keep existing files in output directory | No |
 | `--help` | `-h` | Display help information | No |
 
 ### Example
