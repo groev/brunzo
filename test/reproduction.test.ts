@@ -75,7 +75,7 @@ example {
         const strContent = content as string;
 
         // This is expected to FAIL currently because name is LoginResponse200Body
-        expect(strContent).toContain('export const login200Schema'); 
-        expect(strContent).toContain('export type Login200 = z.infer<typeof login200Schema>');
+        expect(strContent).toContain('export const postLogin200Schema'); 
+        expect(strContent).toContain('export type PostLogin200 = z.infer<typeof postLogin200Schema>');
     });
 });

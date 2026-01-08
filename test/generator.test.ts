@@ -34,13 +34,13 @@ describe('Generator', () => {
     
     // Check Content
     const strContent = content as string;
-    expect(strContent).toContain('export const getUserBodySchema');
+    expect(strContent).toContain('export const getGetUserBodySchema');
     expect(strContent).toContain('z.object');
     expect(strContent).toContain('"id": z.number()');
     expect(strContent).toContain('"name": z.string()');
     
     // Check Types
-    expect(strContent).toContain('export type GetUserBody = z.infer<typeof getUserBodySchema>');
+    expect(strContent).toContain('export type GetGetUserBody = z.infer<typeof getGetUserBodySchema>');
   });
 
   it('should extract array items into named definitions', async () => {
@@ -62,19 +62,19 @@ describe('Generator', () => {
     const strContent = content as string;
 
     // Check Array Item Schema
-    expect(strContent).toContain('export const listPostsBodyPostsItemSchema');
+    expect(strContent).toContain('export const getListPostsBodyPostsItemSchema');
     expect(strContent).toContain('z.object({ "id": z.number().int(), "title": z.string() })');
 
     // Check Array Schema
-    expect(strContent).toContain('export const listPostsBodyPostsSchema = z.array(z.lazy(() => listPostsBodyPostsItemSchema))');
+    expect(strContent).toContain('export const getListPostsBodyPostsSchema = z.array(z.lazy(() => getListPostsBodyPostsItemSchema))');
 
     // Check Root Schema links to Array Schema
-    expect(strContent).toContain('"posts": z.lazy(() => listPostsBodyPostsSchema)');
+    expect(strContent).toContain('"posts": z.lazy(() => getListPostsBodyPostsSchema)');
     
     // Check Types
-    expect(strContent).toContain('export type ListPostsBodyPostsItem');
-    expect(strContent).toContain('export type ListPostsBodyPosts');
-    expect(strContent).toContain('export type ListPostsBody');
+    expect(strContent).toContain('export type GetListPostsBodyPostsItem');
+    expect(strContent).toContain('export type GetListPostsBodyPosts');
+    expect(strContent).toContain('export type GetListPostsBody');
   });
 
   it('should generate schemas for headers, query, and params', async () => {
@@ -94,15 +94,15 @@ describe('Generator', () => {
     const strContent = content as string;
 
     // Header
-    expect(strContent).toContain('export const fullReqHeaderSchema');
+    expect(strContent).toContain('export const postFullReqHeaderSchema');
     expect(strContent).toContain('"X-Key": z.string()');
 
     // Query
-    expect(strContent).toContain('export const fullReqQuerySchema');
+    expect(strContent).toContain('export const postFullReqQuerySchema');
     expect(strContent).toContain('"page": z.number()');
 
     // Params
-    expect(strContent).toContain('export const fullReqParamsSchema');
+    expect(strContent).toContain('export const postFullReqParamsSchema');
     expect(strContent).toContain('"id": z.number()');
   });
 

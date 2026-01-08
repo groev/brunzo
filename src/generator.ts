@@ -234,11 +234,13 @@ export async function generateSchemas(bruFiles: BruFile[], outPath: string, keep
         const allZodSegments: string[] = [];
         const allTypeExports: string[] = [];
         
+        const methodPrefix = toPascalCase(file.method);
+        
         // Helper to run generation and accumulate
         const runGen = async (suffix: string, data: any) => {
             if (!data) return;
-            // name: e.g. GetPostsBody
-            const componentName = cleanName + suffix;
+            // name: e.g. PostLoginBody
+            const componentName = methodPrefix + cleanName + suffix;
             const res = await generateComponentSchema(componentName, data);
             allZodSegments.push(...res.zodSegments);
             allTypeExports.push(...res.typeExports);

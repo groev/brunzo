@@ -49,19 +49,19 @@ example {
         const strContent = content as string;
 
         // Expecting:
-        // getPosts200Schema
-        // getPosts200DataSchema
-        // getPosts200DataPostsSchema
-        // getPosts200DataPostsItemSchema
+        // getGetPosts200Schema
+        // getGetPosts200DataSchema
+        // getGetPosts200DataPostsSchema
+        // getGetPosts200DataPostsItemSchema
 
-        expect(strContent).toContain('export const getPosts200Schema');
-        expect(strContent).toContain('export const getPosts200DataSchema');
-        expect(strContent).toContain('export const getPosts200DataPostsSchema');
-        expect(strContent).toContain('export const getPosts200DataPostsItemSchema');
+        expect(strContent).toContain('export const getGetPosts200Schema');
+        expect(strContent).toContain('export const getGetPosts200DataSchema');
+        expect(strContent).toContain('export const getGetPosts200DataPostsSchema');
+        expect(strContent).toContain('export const getGetPosts200DataPostsItemSchema');
         
-        expect(strContent).toContain('export type GetPosts200 = z.infer<typeof getPosts200Schema>');
-        expect(strContent).toContain('export type GetPosts200Data = z.infer<typeof getPosts200DataSchema>');
-        expect(strContent).toContain('export type GetPosts200DataPosts = z.infer<typeof getPosts200DataPostsSchema>');
-        expect(strContent).toContain('export type GetPosts200DataPostsItem = z.infer<typeof getPosts200DataPostsItemSchema>');
+        expect(strContent).toContain('export type GetGetPosts200 = z.infer<typeof getGetPosts200Schema>');
+        expect(strContent).toContain('export type GetGetPosts200Data = z.infer<typeof getGetPosts200DataSchema>');
+        expect(strContent).toContain('export type GetGetPosts200DataPosts = z.infer<typeof getGetPosts200DataPostsSchema>');
+        expect(strContent).toContain('export type GetGetPosts200DataPostsItem = z.infer<typeof getGetPosts200DataPostsItemSchema>');
     });
 });
