@@ -2,6 +2,12 @@ import fs from 'fs-extra';
 import path from 'path';
 import JSON5 from 'json5';
 
+export interface Response {
+  statusCode: number;
+  body?: any;
+  headers?: Record<string, any>;
+}
+
 export interface BruFile {
   path: string;
   name: string;
@@ -11,15 +17,16 @@ export interface BruFile {
   headers?: Record<string, any>;
   query?: Record<string, any>;
   params?: Record<string, any>;
+  responses?: Response[];
 }
 
 function extractBlockContent(content: string, blockStartName: string): string | null {
     // Escaping regex special chars in blockStartName (like :) 
     const escapedName = blockStartName.replace(/[.*+?^${}()|[\\]/g, '\\$&');
     // We want to match: name \s* { 
-    // So regex source: name\s*\{ 
-    // In string literal: "name\\s*\\{" 
-    const regex = new RegExp(`${escapedName}\\s*\\{`);
+    // or name \s* : \s* {
+    // So regex source: name\s*:?\s*\{ 
+    const regex = new RegExp(`${escapedName}\\s*:?\\s*\\{`);
     const match = content.match(regex);
     
     if (!match || match.index === undefined) return null;
@@ -40,6 +47,36 @@ function extractBlockContent(content: string, blockStartName: string): string | 
     }
     
     return null;
+}
+
+function stripBlocks(content: string, blockStartName: string): string {
+    let newContent = content;
+    const escapedName = blockStartName.replace(/[.*+?^${}()|[\\]/g, '\\$&');
+    
+    while (true) {
+        const regex = new RegExp(`${escapedName}\\s*:?\\s*\\{`);
+        const match = newContent.match(regex);
+        
+        if (!match || match.index === undefined) break;
+        
+        const openBraceIndex = newContent.indexOf('{', match.index);
+        if (openBraceIndex === -1) break;
+        
+        let braceCount = 1;
+        let i = openBraceIndex + 1;
+        while (i < newContent.length && braceCount > 0) {
+            if (newContent[i] === '{') braceCount++;
+            else if (newContent[i] === '}') braceCount--;
+            i++;
+        }
+        
+        if (braceCount === 0) {
+            newContent = newContent.substring(0, match.index) + newContent.substring(i);
+        } else {
+            break;
+        }
+    }
+    return newContent;
 }
 
 function parseKvContent(blockContent: string): Record<string, any> | undefined {
@@ -85,9 +122,68 @@ export async function parseBruFile(filePath: string): Promise<BruFile | null> {
   const urlMatch = content.match(/url:\s*(.+)/);
   const url = urlMatch ? urlMatch[1].trim() : '';
 
+  // Extract Examples (Before stripping them)
+  const responses: Response[] = [];
+  const statusCodesSeen = new Set<number>();
+  
+  const exampleRegex = /example\s*\{/g;
+  let exampleMatch;
+
+  while ((exampleMatch = exampleRegex.exec(content)) !== null) {
+      const exampleContent = extractBlockContent(content.substring(exampleMatch.index), 'example');
+      if (exampleContent) {
+          const responseContent = extractBlockContent(exampleContent, 'response');
+          if (responseContent) {
+              // Extract Status Code
+              const statusBlock = extractBlockContent(responseContent, 'status');
+              let statusCode: number | undefined;
+              if (statusBlock) {
+                  const codeMatch = statusBlock.match(/code:\s*(\d+)/);
+                  if (codeMatch) statusCode = parseInt(codeMatch[1], 10);
+              }
+
+              if (statusCode && !statusCodesSeen.has(statusCode)) {
+                  // Extract Body
+                  const bodyBlock = extractBlockContent(responseContent, 'body');
+                  let responseBody: any = undefined;
+                  if (bodyBlock) {
+                      // Check for content: ''' ... ''' or content: "..."
+                      const contentMatch = bodyBlock.match(/content:\s*'''([\s\S]*?)'''/) || 
+                                         bodyBlock.match(/content:\s*"([\s\S]*?)"/) ||
+                                         bodyBlock.match(/content:\s*([\s\S]+)/);
+                      
+                      if (contentMatch) {
+                          try {
+                              responseBody = JSON5.parse(contentMatch[1].trim());
+                          } catch (e) {
+                              // If it fails, maybe it's not JSON5 but raw string?
+                          }
+                      }
+                  }
+
+                  // Extract Headers (optional)
+                  const headersBlock = extractBlockContent(responseContent, 'headers');
+                  const responseHeaders = headersBlock ? parseKvContent(headersBlock) : undefined;
+
+                  responses.push({
+                      statusCode,
+                      body: responseBody,
+                      headers: responseHeaders
+                  });
+                  statusCodesSeen.add(statusCode);
+              }
+          }
+      }
+      // Ensure we don't get stuck in an infinite loop if something goes wrong
+      if (exampleRegex.lastIndex === exampleMatch.index) exampleRegex.lastIndex++;
+  }
+
+  // Strip examples to avoid polluting top-level parsing
+  const cleanContent = stripBlocks(content, 'example');
+
   // Extract Body
   let body = null;
-  const bodyContent = extractBlockContent(content, 'body:json');
+  const bodyContent = extractBlockContent(cleanContent, 'body:json');
   if (bodyContent) {
       try {
           body = JSON5.parse(bodyContent);
@@ -95,13 +191,13 @@ export async function parseBruFile(filePath: string): Promise<BruFile | null> {
   }
 
   // Extract Key-Value Blocks
-  const headersStr = extractBlockContent(content, 'headers');
+  const headersStr = extractBlockContent(cleanContent, 'headers');
   const headers = headersStr ? parseKvContent(headersStr) : undefined;
   
-  const queryStr = extractBlockContent(content, 'params:query');
+  const queryStr = extractBlockContent(cleanContent, 'params:query');
   const query = queryStr ? parseKvContent(queryStr) : undefined;
   
-  const paramsStr = extractBlockContent(content, 'params:path');
+  const paramsStr = extractBlockContent(cleanContent, 'params:path');
   const params = paramsStr ? parseKvContent(paramsStr) : undefined;
 
   return {
@@ -112,6 +208,7 @@ export async function parseBruFile(filePath: string): Promise<BruFile | null> {
     body,
     headers,
     query,
-    params
+    params,
+    responses: responses.length > 0 ? responses : undefined
   };
 }

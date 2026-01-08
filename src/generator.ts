@@ -58,56 +58,45 @@ function restructureArrays(schema: any, rootName: string) {
                 const prop = obj.properties[key];
                 
                 if (prop.type === 'array') {
-                    // It's an array! Extract logic.
-                    // Name for the array: Parent + Pascal(Key) e.g. GetPostsBody + Posts
                     const arrayName = currentName + toPascalCase(key);
-                    // Name for the item: ArrayName + Item e.g. GetPostsBodyPosts + Item
                     const itemName = arrayName + 'Item';
 
-                    // 1. Handle Item Definition
-                    // Resolve item schema
                     let itemSchema = prop.items;
                     
-                    // If item is a ref, we want to rename/clone the target
                     if (itemSchema.$ref) {
                          const oldRef = itemSchema.$ref.replace('#/definitions/', '');
                          if (definitions[oldRef]) {
-                             // Clone the definition to new name to enforce strict naming context
                              definitions[itemName] = JSON.parse(JSON.stringify(definitions[oldRef]));
-                             // Recurse into the new item definition
                              processObject(definitions[itemName], itemName);
-                         } else {
-                             // Ref broken? Just keep as is or create empty?
                          }
                     } else {
-                        // Inline schema. Extract it.
                         definitions[itemName] = itemSchema;
-                        // Recurse
                         processObject(definitions[itemName], itemName);
                     }
 
-                    // 2. Handle Array Definition
-                    // We create a definition for the array itself
                     definitions[arrayName] = {
                         type: 'array',
                         items: { $ref: `#/definitions/${itemName}` }
                     };
 
-                    // 3. Update Property to point to Array Definition
                     obj.properties[key] = { $ref: `#/definitions/${arrayName}` };
 
-                } else if (prop.type === 'object') {
-                    // Inline object?
-                    // Maybe we should name it too? User didn't strictly ask, but we can recurse.
-                    processObject(prop, currentName + toPascalCase(key));
+                } else if (prop.type === 'object' && prop.properties) {
+                    const objectName = currentName + toPascalCase(key);
+                    
+                    definitions[objectName] = JSON.parse(JSON.stringify(prop));
+                    obj.properties[key] = { $ref: `#/definitions/${objectName}` };
+                    
+                    processObject(definitions[objectName], objectName);
+
                 } else if (prop.$ref) {
-                    // Ref to object?
-                    const refName = prop.$ref.replace('#/definitions/', '');
-                    if (definitions[refName]) {
-                        // We might want to rename this too to maintain context naming?
-                        // For now, just recurse.
-                        // processObject(definitions[refName], refName);
-                        // Avoiding infinite recursion if circular.
+                    const oldRef = prop.$ref.replace('#/definitions/', '');
+                    const objectName = currentName + toPascalCase(key);
+
+                    if (definitions[oldRef] && oldRef !== objectName) {
+                        definitions[objectName] = JSON.parse(JSON.stringify(definitions[oldRef]));
+                        obj.properties[key] = { $ref: `#/definitions/${objectName}` };
+                        processObject(definitions[objectName], objectName);
                     }
                 }
             }
@@ -260,6 +249,14 @@ export async function generateSchemas(bruFiles: BruFile[], outPath: string, keep
         await runGen('Header', file.headers);
         await runGen('Query', file.query);
         await runGen('Params', file.params);
+
+        // Generate for Responses
+        if (file.responses) {
+            for (const response of file.responses) {
+                await runGen(`${response.statusCode}`, response.body);
+                await runGen(`${response.statusCode}Header`, response.headers);
+            }
+        }
 
         if (allZodSegments.length === 0) {
             // Skipping silently
