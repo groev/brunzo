@@ -16,6 +16,32 @@ function toCamelCase(str: string) {
   return pascal.charAt(0).toLowerCase() + pascal.slice(1);
 }
 
+function urlToPathName(url: string): string {
+  // Remove template variables like {{systemurl}}
+  let cleaned = url.replace(/\{\{[^}]+\}\}/g, '');
+
+  // Remove protocol + host if present
+  cleaned = cleaned.replace(/^https?:\/\/[^/]*/, '');
+
+  // Remove query string and hash
+  cleaned = cleaned.replace(/[?#].*$/, '');
+
+  // Remove leading/trailing slashes
+  cleaned = cleaned.replace(/^\/+|\/+$/g, '');
+
+  if (!cleaned) return '';
+
+  // Split by / and normalize each segment
+  // Handle path params: :id → id, {id} → id
+  const segments = cleaned.split('/').filter(Boolean).map(segment => {
+    return segment
+      .replace(/^:/, '')
+      .replace(/^\{|\}$/g, '');
+  });
+
+  return segments.map(s => toPascalCase(s)).join('');
+}
+
 // Recursively walk the schema and replace $ref with const marker
 function replaceRefsWithMarkers(obj: any, map: Record<string, string>) {
   if (typeof obj !== 'object' || obj === null) return;
@@ -227,20 +253,19 @@ export async function generateSchemas(bruFiles: BruFile[], outPath: string, keep
     let createdSchemas = 0;
 
     for (const file of bruFiles) {
-        const cleanName = toPascalCase(file.name);
-        const fileName = `${cleanName}.ts`;
-        const outFilePath = path.join(outPath, fileName); 
+        const methodPrefix = toPascalCase(file.method);
+        const pathName = urlToPathName(file.url);
+        const baseName = methodPrefix + pathName;
+        const fileName = `${baseName}.ts`;
+        const outFilePath = path.join(outPath, fileName);
 
         const allZodSegments: string[] = [];
         const allTypeExports: string[] = [];
-        
-        const methodPrefix = toPascalCase(file.method);
-        
+
         // Helper to run generation and accumulate
         const runGen = async (suffix: string, data: any) => {
             if (!data) return;
-            // name: e.g. PostLoginBody
-            const componentName = methodPrefix + cleanName + suffix;
+            const componentName = baseName + suffix;
             const res = await generateComponentSchema(componentName, data);
             allZodSegments.push(...res.zodSegments);
             allTypeExports.push(...res.typeExports);
