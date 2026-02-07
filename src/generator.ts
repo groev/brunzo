@@ -100,12 +100,10 @@ function restructureArrays(schema: any, rootName: string) {
                         processObject(definitions[itemName], itemName);
                     }
 
-                    definitions[arrayName] = {
+                    obj.properties[key] = {
                         type: 'array',
                         items: { $ref: `#/definitions/${itemName}` }
                     };
-
-                    obj.properties[key] = { $ref: `#/definitions/${arrayName}` };
 
                 } else if (prop.type === 'object' && prop.properties) {
                     const objectName = currentName + toPascalCase(key);

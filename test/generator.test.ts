@@ -65,15 +65,11 @@ describe('Generator', () => {
     expect(strContent).toContain('export const getPostsBodyPostsItemSchema');
     expect(strContent).toContain('z.object({ "id": z.number().int(), "title": z.string() })');
 
-    // Check Array Schema
-    expect(strContent).toContain('export const getPostsBodyPostsSchema = z.array(z.lazy(() => getPostsBodyPostsItemSchema))');
-
-    // Check Root Schema links to Array Schema
-    expect(strContent).toContain('"posts": z.lazy(() => getPostsBodyPostsSchema)');
+    // Check Root Schema has inline array with item ref
+    expect(strContent).toContain('"posts": z.array(z.lazy(() => getPostsBodyPostsItemSchema))');
 
     // Check Types
     expect(strContent).toContain('export type GetPostsBodyPostsItem');
-    expect(strContent).toContain('export type GetPostsBodyPosts');
     expect(strContent).toContain('export type GetPostsBody');
   });
 

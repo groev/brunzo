@@ -51,17 +51,17 @@ example {
         // Expecting:
         // getPosts200Schema
         // getPosts200DataSchema
-        // getPosts200DataPostsSchema
-        // getPosts200DataPostsItemSchema
+        // getPosts200DataPostsItemSchema (array is inline, no separate array wrapper schema)
 
         expect(strContent).toContain('export const getPosts200Schema');
         expect(strContent).toContain('export const getPosts200DataSchema');
-        expect(strContent).toContain('export const getPosts200DataPostsSchema');
         expect(strContent).toContain('export const getPosts200DataPostsItemSchema');
+
+        // Array should be inline on the parent property
+        expect(strContent).toContain('"posts": z.array(z.lazy(() => getPosts200DataPostsItemSchema))');
 
         expect(strContent).toContain('export type GetPosts200 = z.infer<typeof getPosts200Schema>');
         expect(strContent).toContain('export type GetPosts200Data = z.infer<typeof getPosts200DataSchema>');
-        expect(strContent).toContain('export type GetPosts200DataPosts = z.infer<typeof getPosts200DataPostsSchema>');
         expect(strContent).toContain('export type GetPosts200DataPostsItem = z.infer<typeof getPosts200DataPostsItemSchema>');
     });
 });
