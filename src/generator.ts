@@ -115,10 +115,34 @@ function restructureArrays(schema: any, rootName: string) {
 
                 } else if (prop.$ref) {
                     const oldRef = prop.$ref.replace('#/definitions/', '');
+                    const resolvedDef = definitions[oldRef];
                     const objectName = currentName + toPascalCase(key);
 
-                    if (definitions[oldRef] && oldRef !== objectName) {
-                        definitions[objectName] = JSON.parse(JSON.stringify(definitions[oldRef]));
+                    // If the $ref points to an array definition, handle it as an array
+                    if (resolvedDef && resolvedDef.type === 'array') {
+                        const arrayName = objectName;
+                        const itemName = arrayName + 'Item';
+
+                        let itemSchema = resolvedDef.items;
+
+                        if (itemSchema && itemSchema.$ref) {
+                            const itemRef = itemSchema.$ref.replace('#/definitions/', '');
+                            if (definitions[itemRef]) {
+                                definitions[itemName] = JSON.parse(JSON.stringify(definitions[itemRef]));
+                                processObject(definitions[itemName], itemName);
+                            }
+                        } else if (itemSchema) {
+                            definitions[itemName] = JSON.parse(JSON.stringify(itemSchema));
+                            processObject(definitions[itemName], itemName);
+                        }
+
+                        obj.properties[key] = {
+                            type: 'array',
+                            items: { $ref: `#/definitions/${itemName}` }
+                        };
+
+                    } else if (resolvedDef && oldRef !== objectName) {
+                        definitions[objectName] = JSON.parse(JSON.stringify(resolvedDef));
                         obj.properties[key] = { $ref: `#/definitions/${objectName}` };
                         processObject(definitions[objectName], objectName);
                     }

@@ -129,6 +129,40 @@ describe('Generator', () => {
     expect(fs.ensureDir).not.toHaveBeenCalled();
   });
 
+  it('should handle nested array in response (media array scenario)', async () => {
+    const mockFile: BruFile = {
+      path: 'media.bru',
+      name: 'Get Media',
+      method: 'get',
+      url: '/admin/media',
+      responses: [{
+        statusCode: 200,
+        body: {
+          meta: { endpoint: "REST API", request: "api/admin/media", timestamp: 1767869387 },
+          success: true,
+          message: "Media fetched successfully",
+          data: {
+            media: [
+              { uuid: "d1049d24-d689-11f0-9a7e-02420a001a08", type: "image/png", name: "photo1", extension: "png", size: 10792 },
+              { uuid: "da2fd6e1-c6c6-11f0-93d0-02420a00052d", type: "image/png", name: "photo2", extension: "png", size: 73393 }
+            ]
+          }
+        }
+      }]
+    };
+
+    await generateSchemas([mockFile], 'dist');
+
+    const [filePath, content] = vi.mocked(fs.writeFile).mock.calls[0];
+    const strContent = content as string;
+
+    // media must be z.array(), not z.lazy()
+    expect(strContent).toContain('"media": z.array(');
+
+    // Item schema should exist with Item suffix
+    expect(strContent).toContain('ItemSchema');
+  });
+
   it('should not clean the output directory when keep flag is true', async () => {
     const mockFile: BruFile = {
       path: 'test.bru',
