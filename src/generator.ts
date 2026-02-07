@@ -17,8 +17,8 @@ function toCamelCase(str: string) {
 }
 
 function urlToPathName(url: string): string {
-  // Replace {{var}} with the variable name so path params become segments
-  let cleaned = url.replace(/\{\{([^}]+)\}\}/g, '$1');
+  // Remove template variables like {{systemurl}}
+  let cleaned = url.replace(/\{\{[^}]+\}\}/g, '');
 
   // Remove protocol + host if present
   cleaned = cleaned.replace(/^https?:\/\/[^/]*/, '');
@@ -33,15 +33,11 @@ function urlToPathName(url: string): string {
 
   // Split by / and normalize each segment
   // Handle path params: :id → id, {id} → id
-  // Filter out known base path variables (e.g. systemurl, basepath) that aren't real path segments
-  const baseVars = new Set(['systemurl', 'basepath', 'baseurl', 'base_url', 'host', 'hostname', 'apiurl', 'api_url']);
-  const segments = cleaned.split('/').filter(Boolean)
-    .filter(segment => !baseVars.has(segment.toLowerCase()))
-    .map(segment => {
-      return segment
-        .replace(/^:/, '')
-        .replace(/^\{|\}$/g, '');
-    });
+  const segments = cleaned.split('/').filter(Boolean).map(segment => {
+    return segment
+      .replace(/^:/, '')
+      .replace(/^\{|\}$/g, '');
+  });
 
   return segments.map(s => toPascalCase(s)).join('');
 }
