@@ -73,6 +73,7 @@ function replaceRefsWithMarkers(obj: any, map: Record<string, string>) {
 function restructureArrays(schema: any, rootName: string) {
     if (!schema.definitions) schema.definitions = {};
     const definitions = schema.definitions;
+    const consumedDefs = new Set<string>();
 
     // Helper to process a schema object
     function processObject(obj: any, currentName: string) {
@@ -93,6 +94,7 @@ function restructureArrays(schema: any, rootName: string) {
                          const oldRef = itemSchema.$ref.replace('#/definitions/', '');
                          if (definitions[oldRef]) {
                              definitions[itemName] = JSON.parse(JSON.stringify(definitions[oldRef]));
+                             consumedDefs.add(oldRef);
                              processObject(definitions[itemName], itemName);
                          }
                     } else {
@@ -129,6 +131,7 @@ function restructureArrays(schema: any, rootName: string) {
                             const itemRef = itemSchema.$ref.replace('#/definitions/', '');
                             if (definitions[itemRef]) {
                                 definitions[itemName] = JSON.parse(JSON.stringify(definitions[itemRef]));
+                                consumedDefs.add(itemRef);
                                 processObject(definitions[itemName], itemName);
                             }
                         } else if (itemSchema) {
@@ -140,10 +143,12 @@ function restructureArrays(schema: any, rootName: string) {
                             type: 'array',
                             items: { $ref: `#/definitions/${itemName}` }
                         };
+                        consumedDefs.add(oldRef);
 
                     } else if (resolvedDef && oldRef !== objectName) {
                         definitions[objectName] = JSON.parse(JSON.stringify(resolvedDef));
                         obj.properties[key] = { $ref: `#/definitions/${objectName}` };
+                        consumedDefs.add(oldRef);
                         processObject(definitions[objectName], objectName);
                     }
                 }
@@ -153,6 +158,11 @@ function restructureArrays(schema: any, rootName: string) {
 
     // Start with Root
     processObject(schema, rootName);
+
+    // Remove original definitions that were copied to properly-named ones
+    for (const defName of consumedDefs) {
+        delete definitions[defName];
+    }
 }
 
 
@@ -319,11 +329,25 @@ export async function generateSchemas(bruFiles: BruFile[], outPath: string, keep
         // Each zodSegment corresponds to one exported Zod schema.
         createdSchemas += allZodSegments.length;
 
+        // Deduplicate Zod Segments by schema name
+        const seenSchemas = new Set<string>();
+        const uniqueZodSegments = allZodSegments.filter(segment => {
+            const nameMatch = segment.match(/export const (\w+)/);
+            if (nameMatch) {
+                if (seenSchemas.has(nameMatch[1])) return false;
+                seenSchemas.add(nameMatch[1]);
+            }
+            return true;
+        });
+
         // Assemble Final Content
-        let fullContent = `import { z } from "zod";\n\n` + allZodSegments.join('\n\n');
+        let fullContent = `import { z } from "zod";\n\n` + uniqueZodSegments.join('\n\n');
         
         // Replace markers with lazy refs
         fullContent = fullContent.replace(/z\.literal\(['"]__REF__(.+?)['"]\)/g, "z.lazy(() => $1)");
+
+        // Fix z.record() for Zod v4 compatibility (needs key + value args)
+        fullContent = fullContent.replace(/z\.record\(/g, 'z.record(z.string(), ');
 
         // Deduplicate Type Exports
         const uniqueTypeExports = Array.from(new Set(allTypeExports));
